@@ -1,8 +1,8 @@
 import os
 import asyncio
 from aiohttp import web
-from pyrogram import Client, filters
-from pyrogram.types import Message
+from pyrofork import Client, filters
+from pyrofork.types import Message
 from pytgcalls import PyTgCalls
 from pytgcalls.types import MediaStream
 import yt_dlp
