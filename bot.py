@@ -1,5 +1,6 @@
 import os
 import asyncio
+from aiohttp import web
 from pyrogram import Client, filters
 from pyrogram.types import Message
 from pytgcalls import PyTgCalls
@@ -11,6 +12,7 @@ API_ID = int(os.environ.get("API_ID", "0"))
 API_HASH = os.environ.get("API_HASH", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 SESSION_STRING = os.environ.get("SESSION_STRING", "")
+PORT = int(os.environ.get("PORT", 8080))
 
 # Initialize clients
 app = Client("music_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
@@ -20,6 +22,18 @@ pytgcalls = PyTgCalls(user)
 # Store for current songs and queues
 queues = {}
 current_song = {}
+
+
+# Web server for Render health checks
+async def health_check(request):
+    return web.json_response({"status": "alive", "bot": "running"})
+
+async def home(request):
+    return web.Response(text="🎵 Telegram Music Bot is running!")
+
+web_app = web.Application()
+web_app.router.add_get("/", home)
+web_app.router.add_get("/health", health_check)
 
 
 def get_youtube_audio(query: str) -> dict | None:
@@ -244,11 +258,26 @@ async def on_stream_end(client: PyTgCalls, update):
         current_song.pop(chat_id, None)
 
 
+async def start_web_server():
+    """Start the web server for Render health checks."""
+    runner = web.AppRunner(web_app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
+    print(f"Web server started on port {PORT}")
+
+
 async def main():
+    # Start web server first (for Render health checks)
+    await start_web_server()
+    
+    # Start Telegram clients
     await user.start()
     await app.start()
     await pytgcalls.start()
     print("Bot started!")
+    
+    # Keep running
     await asyncio.Event().wait()
 
 
